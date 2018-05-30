@@ -82,7 +82,7 @@ def model(model,features_train,features_test,labels_train,labels_test):
     plt.title("Confusion_matrix")
     plt.xlabel("Predicted_class")
     plt.ylabel("Real class")
-    plt.show()
+   # plt.show()
     print("\n----------Classification Report------------------------------------")
     print(classification_report(labels_test,pred))
 
@@ -91,99 +91,99 @@ def model(model,features_train,features_test,labels_train,labels_test):
     y_score = clf.predict_proba(features_test)[:, 1]
 
     fpr, tpr, t = roc_curve(labels_test, y_score)
-    plot_roc(fpr, tpr)
+  #  plot_roc(fpr, tpr)
     precision, recall, thresholds = precision_recall_curve(labels_test, y_score)
-    plot_precision_recall(precision, recall)
+   # plot_precision_recall(precision, recall)
+
+if __name__ == '__main__':
+    data = pd.read_csv('../input/creditcard.csv')
+    #画箱体图
+    plt.figure(figsize = (12, 6))
+    my_pal = {0: 'deepskyblue', 1: 'deeppink'}
+    ax = sns.boxplot(x = 'Class', y = 'Amount', data = data, palette = my_pal)
+    ax.set_ylim([0, 300])
+    plt.title('Boxplot Amount vs Class')
+    plt.show()
+    #开始特征处理，建模
+    os = SMOTE(random_state=0)
+    data_train_X,data_test_X,data_train_y,data_test_y=data_prepration(data,'Class')
+    columns = data_train_X.columns
 
 
-data = pd.read_csv('../input/creditcard.csv')
-#画箱体图
-plt.figure(figsize = (12, 6))
-my_pal = {0: 'deepskyblue', 1: 'deeppink'}
-ax = sns.boxplot(x = 'Class', y = 'Amount', data = data, palette = my_pal)
-ax.set_ylim([0, 300])
-plt.title('Boxplot Amount vs Class')
-plt.show()
-#开始特征处理，建模
-os = SMOTE(random_state=0)
-data_train_X,data_test_X,data_train_y,data_test_y=data_prepration(data,'Class')
-columns = data_train_X.columns
+    # now use SMOTE to oversample our train data which have features data_train_X and labels in data_train_y
+    os_data_X,os_data_y=os.fit_sample(data_train_X,data_train_y)
+    os_data_X = pd.DataFrame(data=os_data_X,columns=columns )
+    os_data_y= pd.DataFrame(data=os_data_y,columns=["Class"])
+    # we can Check the numbers of our data
+    print("length of oversampled data is ",len(os_data_X))
+    print("Number of normal transcation in oversampled data",len(os_data_y[os_data_y["Class"]==0]))
+    print("No.of fraud transcation",len(os_data_y[os_data_y["Class"]==1]))
+    print("Proportion of Normal data in oversampled data is ",len(os_data_y[os_data_y["Class"]==0])/len(os_data_X))
+    print("Proportion of fraud data in oversampled data is ",len(os_data_y[os_data_y["Class"]==1])/len(os_data_X))
 
 
-# now use SMOTE to oversample our train data which have features data_train_X and labels in data_train_y
-os_data_X,os_data_y=os.fit_sample(data_train_X,data_train_y)
-os_data_X = pd.DataFrame(data=os_data_X,columns=columns )
-os_data_y= pd.DataFrame(data=os_data_y,columns=["Class"])
-# we can Check the numbers of our data
-print("length of oversampled data is ",len(os_data_X))
-print("Number of normal transcation in oversampled data",len(os_data_y[os_data_y["Class"]==0]))
-print("No.of fraud transcation",len(os_data_y[os_data_y["Class"]==1]))
-print("Proportion of Normal data in oversampled data is ",len(os_data_y[os_data_y["Class"]==0])/len(os_data_X))
-print("Proportion of fraud data in oversampled data is ",len(os_data_y[os_data_y["Class"]==1])/len(os_data_X))
+    # Let us first do our amount normalised and other that we are doing above
+    os_data_X["Normalized Amount"] = StandardScaler().fit_transform(os_data_X['Amount'].reshape(-1, 1))
+    os_data_X.drop(["Time","Amount"],axis=1,inplace=True)
+    data_test_X["Normalized Amount"] = StandardScaler().fit_transform(data_test_X['Amount'].reshape(-1, 1))
+    data_test_X.drop(["Time","Amount"],axis=1,inplace=True)
 
 
-# Let us first do our amount normalised and other that we are doing above
-os_data_X["Normalized Amount"] = StandardScaler().fit_transform(os_data_X['Amount'].reshape(-1, 1))
-os_data_X.drop(["Time","Amount"],axis=1,inplace=True)
-data_test_X["Normalized Amount"] = StandardScaler().fit_transform(data_test_X['Amount'].reshape(-1, 1))
-data_test_X.drop(["Time","Amount"],axis=1,inplace=True)
-
-
-# Now start modeling
-print('随机森林模型的数据')
-clf= RandomForestClassifier(n_estimators=10)
-# train data using oversampled data and predict for the test data
-model(clf,os_data_X,data_test_X,os_data_y,data_test_y)
+    # Now start modeling
+    print('xgboost模型的数据')
+    #clf= RandomForestClassifier(n_estimators=10)
+    clf = xgb.XGBClassifier(n_jobs = -1, n_estimators = 200)
+    # train data using oversampled data and predict for the test data
+    model(clf,os_data_X,data_test_X,os_data_y,data_test_y)
 
 
 
 
-log_cfl = LogisticRegression()
-log_cfl.fit(os_data_X, os_data_y)
-rf_cfl = RandomForestClassifier(n_jobs = -1,random_state = 42)
-rf_cfl.fit(os_data_X, os_data_y)
-xgb_cfl = xgb.XGBClassifier(n_jobs = -1, n_estimators = 200)
-xgb_cfl.fit(os_data_X, os_data_y)
+    log_cfl = LogisticRegression()
+    #log_cfl.fit(os_data_X, os_data_y)
+    rf_cfl = RandomForestClassifier(n_jobs = -1,random_state = 42)
+    #rf_cfl.fit(os_data_X, os_data_y)
+    xgb_cfl = xgb.XGBClassifier(n_jobs = -1, n_estimators = 200)
+    #xgb_cfl.fit(os_data_X, os_data_y)
+
+    print("开始gridcv 找逻辑回归最佳参数\n")
+    param_grid = {
+                'penalty' : ['l1','l2'],
+                'class_weight' : ['balanced', None],
+                'C' : [0.1, 1, 10, 100]
+                }
+    CV_log_cfl = GridSearchCV(estimator = log_cfl, param_grid = param_grid , scoring = 'recall', verbose = 1, n_jobs = -1)
+    CV_log_cfl.fit(os_data_X, os_data_y.values.ravel())
+    best_parameters = CV_log_cfl.best_params_
+    print('The best parameters for using this model is', best_parameters)
+
+    print("开始gridcv 找随机森林最佳参数\n")
+    param_grid = {
+                'n_estimators': [100, 200, 500],
+                'max_features': [2, 3],
+                'min_samples_leaf': [1, 2, 4],
+                'min_samples_split': [2, 5, 10]
+                }
+    CV_rf_cfl = GridSearchCV(estimator = rf_cfl, param_grid = param_grid , scoring = 'recall', verbose = 1, n_jobs = -1)
+    CV_rf_cfl.fit(os_data_X, os_data_y.values.ravel())
+    best_parameters = CV_rf_cfl.best_params_
+    print('The best parameters for using this model is', best_parameters)
 
 
-print("开始gridcv 找逻辑回归最佳参数\n")
-param_grid = {
-            'penalty' : ['l1','l2'],
-            'class_weight' : ['balanced', None],
-            'C' : [0.1, 1, 10, 100]
-            }
-CV_log_cfl = GridSearchCV(estimator = log_cfl, param_grid = param_grid , scoring = 'recall', verbose = 1, n_jobs = -1)
-CV_log_cfl.fit(os_data_X, os_data_y)
-best_parameters = CV_log_cfl.best_params_
-print('The best parameters for using this model is', best_parameters)
+    print("开始gridcv 找xgboost最佳参数\n")
+    param_grid = {
+                'n_estimators': [100, 200, 300, 400]
+                  }
+    CV_xgb_cfl = GridSearchCV(estimator = xgb_cfl, param_grid = param_grid, scoring ='recall', verbose = -1,n_jobs = -1)
+    CV_xgb_cfl.fit(os_data_X, os_data_y.values.ravel())
+    best_parameters = CV_xgb_cfl.best_params_
+    print("The best parameters for using this model is", best_parameters)
 
-print("开始gridcv 找随机森林最佳参数\n")
-param_grid = {
-            'n_estimators': [100, 200, 500],
-            'max_features': [2, 3],
-            'min_samples_leaf': [1, 2, 4],
-            'min_samples_split': [2, 5, 10]
-            }
-CV_rf_cfl = GridSearchCV(estimator = rf_cfl, param_grid = param_grid , scoring = 'recall', verbose = 1, n_jobs = -1)
-CV_rf_cfl.fit(os_data_X, os_data_y)
-best_parameters = CV_rf_cfl.best_params_
-print('The best parameters for using this model is', best_parameters)
+    print("开始投票模型\n")
+    from sklearn.ensemble import VotingClassifier
 
-
-print("开始gridcv 找xgboost最佳参数\n")
-param_grid = {
-            'n_estimators': [100, 200, 300, 400]
-              }
-CV_xgb_cfl = GridSearchCV(estimator = xgb_cfl, param_grid = param_grid, scoring ='recall', verbose = -1)
-CV_xgb_cfl.fit(os_data_X, os_data_y)
-best_parameters = CV_xgb_cfl.best_params_
-print("The best parameters for using this model is", best_parameters)
-
-print("开始投票模型\n")
-from sklearn.ensemble import VotingClassifier
-
-voting_cfl = VotingClassifier(
-        estimators = [('log_cfl', log_cfl), ('rf_cfl', rf_cfl), ('xgb_cfl', xgb_cfl)],
-                     voting='soft')
-print('投票模型的数据')
-model(voting_cfl,os_data_X,data_test_X,os_data_y,data_test_y)
+    voting_cfl = VotingClassifier(
+            estimators = [('log_cfl', log_cfl), ('rf_cfl', rf_cfl), ('xgb_cfl', xgb_cfl)],
+                         voting='soft')
+    print('投票模型的数据')
+    model(voting_cfl,os_data_X,data_test_X,os_data_y,data_test_y)
